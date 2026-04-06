@@ -11,14 +11,19 @@ export default function LoginForm() {
   const router = useRouter()
   const supabase = createClient()
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { setError('Email ou mot de passe incorrect'); setLoading(false) }
-    else window.location.href = '/dashboard'
+async function handleLogin(e: React.FormEvent) {
+  e.preventDefault()
+  setLoading(true)
+  setError('')
+  const result = await supabase.auth.signInWithPassword({ email, password })
+  console.log('AUTH RESULT:', JSON.stringify(result))
+  if (result.error) {
+    setError('Email ou mot de passe incorrect')
+    setLoading(false)
+  } else {
+    window.location.href = '/dashboard'
   }
+}
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'var(--bg)' }}>

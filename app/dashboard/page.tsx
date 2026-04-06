@@ -1,10 +1,17 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
+import { cookies } from 'next/headers'
 import DashboardClient from '@/components/DashboardClient'
 
 export default async function DashboardPage() {
+  const cookieStore = await cookies()
+  const allCookies = cookieStore.getAll()
+  //console.log('COOKIE VALUE:', JSON.stringify(allCookies.find(c => c.name.includes('auth-token'))))
+
   const supabase = await createServerSupabase()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  //console.log('USER:', user?.email, 'ERROR:', error?.message)
+
   if (!user) redirect('/login')
 
   // Get profile
