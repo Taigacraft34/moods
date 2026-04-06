@@ -1,3 +1,5 @@
+export const runtime = 'nodejs'
+
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -14,7 +16,7 @@ export async function middleware(req: NextRequest) {
         setAll: (cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) => {
           cookiesToSet.forEach(({ name, value, options }) => {
             req.cookies.set(name, value)
-            res.cookies.set(name, value, options)
+            res.cookies.set(name, value, options as Parameters<typeof res.cookies.set>[2])
           })
         },
       },
@@ -24,7 +26,12 @@ export async function middleware(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = req.nextUrl
-  const isPublic = pathname === '/login' || pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname === '/manifest.json' || pathname.startsWith('/icon')
+  const isPublic = pathname === '/login'
+    || pathname.startsWith('/_next')
+    || pathname.startsWith('/api')
+    || pathname === '/manifest.json'
+    || pathname.startsWith('/icon')
+    || pathname === '/favicon.ico'
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', req.url))
