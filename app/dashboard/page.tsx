@@ -5,9 +5,7 @@ import DashboardClient from '@/components/DashboardClient'
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabase()
-  //const { data: { user } } = await supabase.auth.getUser()
   const { data: { session } } = await supabase.auth.getSession()
-  console.log('DASHBOARD session:', session)
   if (!session) redirect('/login')
   const user = session.user
 
@@ -19,7 +17,6 @@ export default async function DashboardPage() {
     .gte('created_at', today + 'T00:00:00').lte('created_at', today + 'T23:59:59')
     .order('entry_time', { ascending: true })
 
-  // Streak
   const { data: allMoods } = await supabase.from('moods').select('created_at').eq('user_id', user.id)
   let streak = 0
   if (allMoods && allMoods.length > 0) {

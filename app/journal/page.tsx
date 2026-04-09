@@ -1,11 +1,13 @@
+export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
 import JournalClient from '@/components/JournalClient'
 
 export default async function JournalPage() {
   const supabase = await createServerSupabase()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) redirect('/login')
+  const user = session.user
 
   const today = new Date().toISOString().split('T')[0]
   const { data: todayEntry } = await supabase
