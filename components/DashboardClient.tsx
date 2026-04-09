@@ -14,45 +14,77 @@ const SCORE_LABELS: Record<number, string> = {
 interface Props {
   user: { id: string; email?: string }
   profile: Profile | null
-  todayEntry: MoodEntry | null
+  todayMoods: MoodEntry[]
   streak: number
 }
 
-export default function DashboardClient({ user, profile, todayEntry, streak }: Props) {
-  const [score, setScore] = useState<number | null>(todayEntry?.score ?? null)
-  const [comment, setComment] = useState(todayEntry?.comment ?? '')
+function timeToInput(time: string) {
+  return time ? time.slice(0, 5) : new Date().toTimeString().slice(0, 5)
+}
+
+export default function DashboardClient({ user, profile, todayMoods, streak }: Props) {
+  const [score, setScore] = useState<number | null>(null)
+  const [comment, setComment] = useState('')
+  const [entryTime, setEntryTime] = useState(new Date().toTimeString().slice(0, 5))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [hasEntry, setHasEntry] = useState(!!todayEntry)
+  const [moods, setMoods] = useState<MoodEntry[]>(todayMoods)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
   const name = profile?.display_name || user.email?.split('@')[0] || 'vous'
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir'
+  const avgToday = moods.length ? (moods.reduce((s, m) => s + m.score, 0) / moods.length).toFixed(1) : null
+
+  function startEdit(m: MoodEntry) {
+    setEditingId(m.id)
+    setScore(m.score)
+    setComment(m.comment ?? '')
+    setEntryTime(timeToInput(m.entry_time))
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setScore(null)
+    setComment('')
+    setEntryTime(new Date().toTimeString().slice(0, 5))
+  }
 
   async function handleSave() {
     if (!score) return
     setSaving(true)
-    const today = new Date().toISOString().split('T')[0]
-    if (hasEntry && todayEntry) {
-      await supabase.from('moods').update({ score, comment: comment || null })
-        .eq('id', todayEntry.id)
+    if (editingId) {
+      const { data } = await supabase.from('moods')
+        .update({ score, comment: comment || null, entry_time: entryTime + ':00' })
+        .eq('id', editingId).select().single()
+      if (data) setMoods(prev => prev.map(m => m.id === editingId ? data : m))
+      setEditingId(null)
     } else {
-      await supabase.from('moods').insert({ user_id: user.id, score, comment: comment || null })
+      const { data } = await supabase.from('moods')
+        .insert({ user_id: user.id, score, comment: comment || null, entry_time: entryTime + ':00' })
+        .select().single()
+      if (data) setMoods(prev => [...prev, data].sort((a, b) => a.entry_time.localeCompare(b.entry_time)))
     }
+    setScore(null)
+    setComment('')
+    setEntryTime(new Date().toTimeString().slice(0, 5))
     setSaving(false)
     setSaved(true)
-    setHasEntry(true)
-    setTimeout(() => setSaved(false), 2500)
-    router.refresh()
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  async function handleDelete(id: string) {
+    await supabase.from('moods').delete().eq('id', id)
+    setMoods(prev => prev.filter(m => m.id !== id))
   }
 
   return (
     <div className="page">
       <div style={{ padding: '56px 20px 20px' }}>
         {/* Header */}
-        <div className="animate-up" style={{ marginBottom: '28px' }}>
+        <div className="animate-up" style={{ marginBottom: '20px' }}>
           <p style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '4px' }}>
             {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
@@ -61,75 +93,85 @@ export default function DashboardClient({ user, profile, todayEntry, streak }: P
           </h1>
         </div>
 
-        {/* Streak */}
-        {streak > 0 && (
-          <div className="animate-up delay-1" style={{ marginBottom: '24px' }}>
+        {/* Streak + avg */}
+        <div className="animate-up delay-1" style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          {streak > 0 && (
             <div className="flame-badge">
               <span style={{ fontSize: '18px' }}>🔥</span>
               <span>{streak} jour{streak > 1 ? 's' : ''} de suite</span>
-              {streak >= 7 && <span style={{ fontSize: '11px', opacity: 0.8 }}>· Incroyable !</span>}
             </div>
-          </div>
-        )}
+          )}
+          {avgToday && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: 'var(--accent-soft)', border: '0.5px solid var(--accent-glow)', borderRadius: '20px', fontSize: '13px', color: 'var(--accent)', fontWeight: 500 }}>
+              Moyenne aujourd'hui : {avgToday}/10
+            </div>
+          )}
+        </div>
 
-        {/* Main card */}
+        {/* Formulaire */}
         <div className="card animate-up delay-2" style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '17px', fontWeight: 500, marginBottom: '6px' }}>
-            {hasEntry ? 'Modifier ton humeur' : 'Comment tu te sens aujourd\'hui ?'}
+          <h2 style={{ fontSize: '16px', fontWeight: 500, marginBottom: '16px' }}>
+            {editingId ? 'Modifier une humeur' : 'Ajouter une humeur'}
           </h2>
-          <p style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '20px' }}>
-            {score ? `${score}/10 — ${SCORE_LABELS[score]}` : 'Choisis un score de 1 à 10'}
-          </p>
 
-          {/* Score grid */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+          {/* Heure */}
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ fontSize: '12px', color: 'var(--text2)', display: 'block', marginBottom: '5px' }}>Heure</label>
+            <input className="input" type="time" value={entryTime} onChange={e => setEntryTime(e.target.value)} style={{ width: 'auto' }} />
+          </div>
+
+          {/* Score */}
+          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '8px' }}>
+            {score ? `${score}/10 — ${SCORE_LABELS[score]}` : 'Score'}
+          </p>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
             {[1,2,3,4,5,6,7,8,9,10].map(n => (
-              <button
-                key={n}
-                className={`score-pill${score === n ? ' selected' : ''}`}
-                onClick={() => setScore(n)}
-                style={score === n ? { background: SCORE_COLORS[n], borderColor: SCORE_COLORS[n] } : {}}
-              >
+              <button key={n} className={`score-pill${score === n ? ' selected' : ''}`} onClick={() => setScore(n)}
+                style={score === n ? { background: SCORE_COLORS[n], borderColor: SCORE_COLORS[n] } : {}}>
                 {n}
               </button>
             ))}
           </div>
-
-          {/* Emoji scale labels */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text3)', marginBottom: '20px' }}>
-            <span>😞 Très mal</span>
-            <span>😊 Excellent</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text3)', marginBottom: '14px' }}>
+            <span>😞 Très mal</span><span>😊 Excellent</span>
           </div>
 
-          {/* Comment */}
-          <textarea
-            className="input"
-            rows={3}
-            placeholder="Ajouter un commentaire... (optionnel)"
-            value={comment}
-            onChange={e => setComment(e.target.value)}
-            style={{ marginBottom: '16px' }}
-          />
+          <textarea className="input" rows={2} placeholder="Commentaire optionnel..." value={comment}
+            onChange={e => setComment(e.target.value)} style={{ marginBottom: '12px' }} />
 
-          <button
-            className="btn-primary"
-            onClick={handleSave}
-            disabled={!score || saving}
-          >
-            {saving ? 'Enregistrement...' : saved ? '✓ Enregistré !' : hasEntry ? 'Mettre à jour' : 'Enregistrer'}
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn-primary" onClick={handleSave} disabled={!score || saving} style={{ flex: 1 }}>
+              {saving ? 'Enregistrement...' : saved ? '✓ Enregistré !' : editingId ? 'Mettre à jour' : 'Ajouter'}
+            </button>
+            {editingId && (
+              <button className="btn-ghost" onClick={cancelEdit}>Annuler</button>
+            )}
+          </div>
         </div>
 
-        {/* Quick tip */}
-        {!hasEntry && (
-          <div className="animate-up delay-3" style={{ padding: '14px 16px', background: 'var(--accent-soft)', border: '0.5px solid var(--accent-glow)', borderRadius: 'var(--radius-sm)', fontSize: '13px', color: 'var(--text2)' }}>
-            💡 Prends 30 secondes chaque soir pour noter ton humeur. C'est suffisant pour construire une habitude.
-          </div>
-        )}
-
-        {hasEntry && score && (
-          <div className="animate-up delay-3" style={{ padding: '14px 16px', background: 'var(--green-soft)', border: '0.5px solid rgba(78,203,160,0.3)', borderRadius: 'var(--radius-sm)', fontSize: '13px', color: 'var(--green)' }}>
-            ✓ Humeur enregistrée pour aujourd'hui. À demain !
+        {/* Liste des humeurs du jour */}
+        {moods.length > 0 && (
+          <div className="card animate-up delay-3">
+            <h3 style={{ fontSize: '14px', color: 'var(--text2)', marginBottom: '14px', fontWeight: 400 }}>
+              Aujourd'hui — {moods.length} entrée{moods.length > 1 ? 's' : ''}
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {moods.map(m => (
+                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: SCORE_COLORS[m.score] + '22', border: `1.5px solid ${SCORE_COLORS[m.score]}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: SCORE_COLORS[m.score], flexShrink: 0 }}>
+                    {m.score}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '12px', color: 'var(--text3)' }}>{timeToInput(m.entry_time)}</p>
+                    {m.comment && <p style={{ fontSize: '13px', color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.comment}</p>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                    <button className="btn-ghost" onClick={() => startEdit(m)} style={{ padding: '5px 10px', fontSize: '12px' }}>✏️</button>
+                    <button onClick={() => handleDelete(m.id)} style={{ padding: '5px 10px', fontSize: '12px', border: '0.5px solid rgba(240,112,112,0.3)', borderRadius: 'var(--radius-sm)', color: 'var(--red)', background: 'var(--red-soft)' }}>✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

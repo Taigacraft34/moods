@@ -1,37 +1,32 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
 
 export default function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const router = useRouter()
   const supabase = createClient()
 
-async function handleLogin(e: React.FormEvent) {
-  e.preventDefault()
-  setLoading(true)
-  setError('')
-  const result = await supabase.auth.signInWithPassword({ email, password })
-  console.log('AUTH RESULT:', JSON.stringify(result))
-  if (result.error) {
-    setError('Email ou mot de passe incorrect')
-    setLoading(false)
-  } else {
-    window.location.href = '/dashboard'
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setError('Email ou mot de passe incorrect')
+      setLoading(false)
+    } else {
+      window.location.href = '/dashboard'
+    }
   }
-}
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'var(--bg)' }}>
-      {/* Background decoration */}
       <div style={{ position: 'fixed', top: '-20%', left: '50%', transform: 'translateX(-50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(139,124,248,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
       <div className="animate-up" style={{ width: '100%', maxWidth: '380px' }}>
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{ width: '56px', height: '56px', background: 'var(--accent-soft)', border: '0.5px solid var(--accent-glow)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '24px' }}>
             🌊

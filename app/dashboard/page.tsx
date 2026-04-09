@@ -1,62 +1,31 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
-import { cookies } from 'next/headers'
 import DashboardClient from '@/components/DashboardClient'
 
 export default async function DashboardPage() {
-  const cookieStore = await cookies()
-  const allCookies = cookieStore.getAll()
-  //console.log('COOKIE VALUE:', JSON.stringify(allCookies.find(c => c.name.includes('auth-token'))))
-
   const supabase = await createServerSupabase()
-  const { data: { user }, error } = await supabase.auth.getUser()
-  //console.log('USER:', user?.email, 'ERROR:', error?.message)
-
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
 
-  // Get today's entry
   const today = new Date().toISOString().split('T')[0]
-  const { data: todayEntry } = await supabase
-    .from('moods')
-    .select('*')
-    .eq('user_id', user.id)
-    .gte('created_at', today + 'T00:00:00')
-    .lte('created_at', today + 'T23:59:59')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
+  const { data: todayMoods } = await supabase
+    .from('moods').select('*').eq('user_id', user.id)
+    .gte('created_at', today + 'T00:00:00').lte('created_at', today + 'T23:59:59')
+    .order('entry_time', { ascending: true })
 
-  // Calculate streak
-  const { data: allMoods } = await supabase
-    .from('moods')
-    .select('created_at')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-
+  // Streak
+  const { data: allMoods } = await supabase.from('moods').select('created_at').eq('user_id', user.id)
   let streak = 0
   if (allMoods && allMoods.length > 0) {
-    const days = new Set(allMoods.map(m => m.created_at.split('T')[0]))
+    const days = new Set(allMoods.map((m: {created_at: string}) => m.created_at.split('T')[0]))
     const d = new Date()
     while (true) {
       const key = d.toISOString().split('T')[0]
-      if (days.has(key)) { streak++; d.setDate(d.getDate() - 1) }
-      else break
+      if (days.has(key)) { streak++; d.setDate(d.getDate() - 1) } else break
     }
   }
 
-  return (
-    <DashboardClient
-      user={user}
-      profile={profile}
-      todayEntry={todayEntry ?? null}
-      streak={streak}
-    />
-  )
+  return <DashboardClient user={user} profile={profile} todayMoods={todayMoods ?? []} streak={streak} />
 }
