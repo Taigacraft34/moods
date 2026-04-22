@@ -230,7 +230,7 @@ export default function StatsClient({ moods, journals, streak }: { moods: MoodEn
                           {day.date === today ? "Aujourd'hui" : new Date(day.date+'T12:00:00').toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' })}
                           <span style={{ marginLeft:'6px', color:'var(--text3)' }}>· {day.moods.length} entrée{day.moods.length>1?'s':''}</span>
                         </p>
-                        {preview && <p style={{ fontSize:'12px', color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{preview}</p>}
+                        {preview && <p className="desktop-clamp-2" style={{ fontSize:'12px', color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{preview}</p>}
                       </div>
                       <button className="btn-ghost" onClick={() => setSelectedDay(day)} style={{ flexShrink:0, padding:'5px 12px', fontSize:'12px' }}>Voir</button>
                     </div>

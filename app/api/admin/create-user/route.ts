@@ -1,44 +1,89 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { createServerSupabase } from '@/lib/supabase-server'
+import { createAdminSupabase } from '@/lib/supabase-admin'
 
-export async function POST(req: NextRequest) {
-  const cookieStore = await cookies()
+type Payload = {
+  email?: unknown
+  password?: unknown
+  display_name?: unknown
+  is_admin?: unknown
+}
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
-  )
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+function asString(v: unknown) {
+  return typeof v === 'string' ? v : ''
+}
 
-  const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
-  if (!profile?.is_admin) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+function asBool(v: unknown) {
+  return typeof v === 'boolean' ? v : false
+}
 
-  const { createClient } = await import('@supabase/supabase-js')
-  const adminClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+export async function POST(request: Request) {
+  const supabase = createServerSupabase()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  const { email, password, display_name, is_admin } = await req.json()
+  if (!user) {
+    return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+  }
 
-  const { data: newUser, error } = await adminClient.auth.admin.createUser({
+  {
+    const adminForCheck = createAdminSupabase()
+    if (adminForCheck) {
+      const { data: me } = await adminForCheck.from('profiles').select('is_admin').eq('id', user.id).single()
+      if (!me?.is_admin) return NextResponse.json({ error: 'Accès interdit' }, { status: 403 })
+    } else {
+      const { data: me } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
+      if (!me?.is_admin) return NextResponse.json({ error: 'Accès interdit' }, { status: 403 })
+    }
+  }
+
+  const body = (await request.json().catch(() => ({}))) as Payload
+  const email = asString(body.email).trim().toLowerCase()
+  const password = asString(body.password)
+  const display_name = asString(body.display_name).trim()
+  const is_admin = asBool(body.is_admin)
+
+  if (!email || !email.includes('@')) {
+    return NextResponse.json({ error: 'Email invalide' }, { status: 400 })
+  }
+  if (!password || password.length < 6) {
+    return NextResponse.json({ error: 'Mot de passe trop court (min 6 caractères)' }, { status: 400 })
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceKey) {
+    return NextResponse.json({ error: 'Configuration serveur manquante (SUPABASE_SERVICE_ROLE_KEY)' }, { status: 500 })
+  }
+
+  const admin = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+
+  const { data, error } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
   })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error || !data.user) {
+    return NextResponse.json({ error: error?.message || 'Impossible de créer le compte' }, { status: 400 })
+  }
 
-  await adminClient.from('profiles').insert({
-    id: newUser.user.id,
+  // Le trigger peut créer un profil automatiquement, mais on force les champs nécessaires.
+  const { error: profileError } = await admin.from('profiles').upsert({
+    id: data.user.id,
     email,
     display_name: display_name || null,
-    is_admin: is_admin || false,
+    is_admin,
   })
 
-  return NextResponse.json({ success: true })
+  if (profileError) {
+    return NextResponse.json({ error: profileError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true, id: data.user.id })
 }
+

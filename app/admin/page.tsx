@@ -1,22 +1,33 @@
-export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
-import { createServerSupabase } from '@/lib/supabase-server'
 import AdminClient from '@/components/AdminClient'
+import { createServerSupabase } from '@/lib/supabase-server'
+import { createAdminSupabase } from '@/lib/supabase-admin'
+import type { Profile } from '@/lib/types'
 
 export default async function AdminPage() {
-  const supabase = await createServerSupabase()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) redirect('/login')
-  const user = session.user
+  const supabase = createServerSupabase()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-  if (!profile?.is_admin) redirect('/dashboard')
+  const admin = createAdminSupabase()
+  if (admin) {
+    const { data: me } = await admin.from('profiles').select('is_admin').eq('id', user.id).single()
+    if (!me?.is_admin) redirect('/dashboard')
+  } else {
+    const { data: me } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
+    if (!me?.is_admin) redirect('/dashboard')
+  }
 
-  const { data: users } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
+  const { data: users } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).returns<Profile[]>()
 
-  const { data: moodCounts } = await supabase.from('moods').select('user_id')
-  const counts: Record<string, number> = {}
-  moodCounts?.forEach((m: { user_id: string }) => { counts[m.user_id] = (counts[m.user_id] || 0) + 1 })
+  const { data: moodRows } = await supabase.from('moods').select('user_id').returns<{ user_id: string }[]>()
+  const moodCounts: Record<string, number> = {}
+  for (const row of moodRows ?? []) {
+    moodCounts[row.user_id] = (moodCounts[row.user_id] ?? 0) + 1
+  }
 
-  return <AdminClient users={users ?? []} moodCounts={counts} />
+  return <AdminClient users={users ?? []} moodCounts={moodCounts} />
 }
+

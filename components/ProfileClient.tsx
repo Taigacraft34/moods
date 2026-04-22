@@ -50,7 +50,7 @@ export default function ProfileClient({ user, profile }: { user: { id: string; e
         </div>
 
         {/* Edit form */}
-        <div className="card animate-up delay-2" style={{ marginBottom: '16px' }}>
+        <div className="card desktop-center animate-up delay-2" style={{ marginBottom: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 500, marginBottom: '16px' }}>Informations</h3>
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', fontSize: '13px', color: 'var(--text2)', marginBottom: '6px' }}>Prénom ou pseudo</label>
@@ -69,7 +69,7 @@ export default function ProfileClient({ user, profile }: { user: { id: string; e
 
         {/* Admin link */}
         {profile?.is_admin && (
-          <div className="card animate-up delay-3" style={{ marginBottom: '16px' }}>
+          <div className="card desktop-center animate-up delay-3" style={{ marginBottom: '16px' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 500, marginBottom: '12px' }}>Administration</h3>
             <a href="/admin" style={{ display: 'block', padding: '12px 14px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', fontSize: '14px', color: 'var(--text2)' }}>
               → Gérer les utilisateurs

@@ -109,7 +109,7 @@ export default function DashboardClient({ user, profile, todayMoods, streak }: P
         </div>
 
         {/* Formulaire */}
-        <div className="card animate-up delay-2" style={{ marginBottom: '16px' }}>
+        <div className="card desktop-center animate-up delay-2" style={{ marginBottom: '16px' }}>
           <h2 style={{ fontSize: '16px', fontWeight: 500, marginBottom: '16px' }}>
             {editingId ? 'Modifier une humeur' : 'Ajouter une humeur'}
           </h2>
@@ -151,7 +151,7 @@ export default function DashboardClient({ user, profile, todayMoods, streak }: P
 
         {/* Liste des humeurs du jour */}
         {moods.length > 0 && (
-          <div className="card animate-up delay-3">
+          <div className="card desktop-center animate-up delay-3">
             <h3 style={{ fontSize: '14px', color: 'var(--text2)', marginBottom: '14px', fontWeight: 400 }}>
               Aujourd'hui — {moods.length} entrée{moods.length > 1 ? 's' : ''}
             </h3>

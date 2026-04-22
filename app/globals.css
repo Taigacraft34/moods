@@ -214,3 +214,104 @@ textarea.input { resize: none; line-height: 1.5; }
   color: var(--amber);
   font-weight: 500;
 }
+
+/* ============================================================
+   Desktop layout (do not affect phones)
+   ============================================================ */
+@media (min-width: 900px) {
+  .page {
+    max-width: 1120px;
+    padding-bottom: 0;
+    padding-left: 96px; /* make room for sidebar nav */
+  }
+
+  .card {
+    padding: 22px 24px;
+  }
+
+  /* Bigger targets on desktop */
+  .btn-primary {
+    padding: 16px 18px;
+    font-size: 16px;
+    border-radius: 12px;
+  }
+
+  .btn-ghost {
+    padding: 12px 16px;
+    font-size: 15px;
+    border-radius: 12px;
+  }
+
+  .input {
+    padding: 14px 16px;
+    font-size: 16px;
+    border-radius: 12px;
+  }
+
+  .score-pill {
+    width: 44px;
+    height: 44px;
+    font-size: 15px;
+  }
+
+  /* Center some cards for readability */
+  .desktop-center {
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .desktop-center-wide {
+    max-width: 920px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* BottomNav becomes a left sidebar on desktop */
+  .bottom-nav {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: auto;
+    width: 96px;
+    max-width: none;
+    margin: 0;
+    padding: 22px 0;
+    border-top: none;
+    border-right: 0.5px solid var(--border);
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .nav-item {
+    flex: 0;
+    padding: 10px 6px;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .nav-item svg {
+    transform: none;
+  }
+
+  .nav-item.active svg {
+    transform: none;
+  }
+
+  /* Clamp long previews for readability on desktop */
+  .desktop-clamp-1,
+  .desktop-clamp-2,
+  .desktop-clamp-3 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .desktop-clamp-1 { -webkit-line-clamp: 1; }
+  .desktop-clamp-2 { -webkit-line-clamp: 2; }
+  .desktop-clamp-3 { -webkit-line-clamp: 3; }
+}

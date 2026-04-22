@@ -87,7 +87,7 @@ export default function JournalClient({ user, todayEntry, history }: Props) {
         </div>
 
         {/* Formulaire du jour */}
-        <div className="card animate-up delay-1" style={{ marginBottom: '20px' }}>
+        <div className="card desktop-center animate-up delay-1" style={{ marginBottom: '20px' }}>
           <h2 style={{ fontSize: '15px', fontWeight: 500, marginBottom: '14px' }}>
             {currentEntry ? "Modifier l'entrée d'aujourd'hui" : "Écrire l'entrée du jour"}
           </h2>
@@ -101,7 +101,7 @@ export default function JournalClient({ user, todayEntry, history }: Props) {
 
         {/* Historique */}
         {historyList.length > 0 && (
-          <div className="card animate-up delay-2">
+          <div className="card desktop-center animate-up delay-2">
             <h3 style={{ fontSize: '14px', color: 'var(--text2)', marginBottom: '14px', fontWeight: 400 }}>Historique</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {historyList.map(entry => (
@@ -110,7 +110,7 @@ export default function JournalClient({ user, todayEntry, history }: Props) {
                     <p style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '2px' }}>
                       {entry.entry_date === today ? "Aujourd'hui" : formatDate(entry.entry_date)}
                     </p>
-                    <p style={{ fontSize: '13px', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p className="desktop-clamp-2" style={{ fontSize: '13px', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {getPreview(entry)}
                     </p>
                   </div>
